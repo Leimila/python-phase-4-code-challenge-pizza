@@ -102,14 +102,15 @@ def delete_restaurant(id):
     if not restaurant:
         return jsonify({"error": "Restaurant not found"}), 404
 
-    # 🔥 Delete all associated RestaurantPizza records before deleting the restaurant
+    # Delete associated restaurant_pizzas
     RestaurantPizza.query.filter_by(restaurant_id=id).delete()
-    
-    # Now safely delete the restaurant
+
+    # Delete the restaurant itself
     db.session.delete(restaurant)
     db.session.commit()
 
-    return jsonify({"message": "Restaurant deleted"}), 200
+    return '', 204  # 🔥 Return an empty response with status 204
+
 
 
 # Get all pizzas
@@ -173,26 +174,24 @@ def create_restaurant_pizza():
     price = data.get("price")
     pizza_id = data.get("pizza_id")
     restaurant_id = data.get("restaurant_id")
-
-    if price is None or pizza_id is None or restaurant_id is None:
-        return jsonify({"errors": ["Missing required fields"]}), 400  # ✅ Fix response format
+    
+    if not price or not pizza_id or not restaurant_id:
+        return jsonify({"errors": ["validation errors"]}), 400  # 🔥 Updated error format
 
     if not (1 <= price <= 30):
-        return jsonify({"errors": ["Price must be between 1 and 30"]}), 400  # ✅ Fix response format
+        return jsonify({"errors": ["validation errors"]}), 400  # 🔥 Updated error format
 
     restaurant = Restaurant.query.get(restaurant_id)
     pizza = Pizza.query.get(pizza_id)
-
+    
     if not restaurant or not pizza:
-        return jsonify({"errors": ["Invalid restaurant or pizza ID"]}), 404  # ✅ Fix response format
-
-    new_restaurant_pizza = RestaurantPizza(
-        price=price, restaurant_id=restaurant_id, pizza_id=pizza_id
-    )
+        return jsonify({"error": "Invalid restaurant or pizza ID"}), 404
+    
+    new_restaurant_pizza = RestaurantPizza(price=price, restaurant_id=restaurant_id, pizza_id=pizza_id)
     db.session.add(new_restaurant_pizza)
     db.session.commit()
-
-    return jsonify(new_restaurant_pizza.to_dict()), 201  # ✅ Return correct object
+    
+    return jsonify(pizza.to_dict()), 201
 
 if __name__ == "__main__":
     app.run(port=5555, debug=True)
