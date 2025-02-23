@@ -73,7 +73,10 @@ def index():
 @app.route("/restaurants", methods=["GET"])
 def get_restaurants():
     restaurants = Restaurant.query.all()
-    return jsonify([restaurant.to_dict() for restaurant in restaurants]), 200
+    return jsonify([
+        {"id": r.id, "name": r.name, "address": r.address} for r in restaurants
+    ]), 200
+    # return jsonify([restaurant.to_dict() for restaurant in restaurants]), 200
 
 # Get a single restaurant by ID
 @app.route("/restaurants/<int:id>", methods=["GET"])
@@ -97,7 +100,31 @@ def delete_restaurant(id):
 @app.route("/pizzas", methods=["GET"])
 def get_pizzas():
     pizzas = Pizza.query.all()
-    return jsonify([pizza.to_dict() for pizza in pizzas]), 200
+    return jsonify([pizza.to_dict(only=("id", "name", "ingredients")) for pizza in pizzas]), 200
+    # return jsonify([pizza.to_dict() for pizza in pizzas]), 200
+
+@app.route("/restaurant_pizzas", methods=["GET"])
+def get_restaurant_pizzas():
+    restaurant_pizzas = RestaurantPizza.query.all()
+    return jsonify([rp.to_dict() for rp in restaurant_pizzas]), 200
+
+# Add a deleted Restaurant
+@app.route("/restaurants", methods=["POST"])
+def create_restaurant():
+    data = request.get_json()
+    name = data.get("name")
+    address = data.get("address")
+
+    if not name or not address:
+        return jsonify({"error": "Missing name or address"}), 400
+
+    new_restaurant = Restaurant(name=name, address=address)
+    db.session.add(new_restaurant)
+    db.session.commit()
+
+    return jsonify(new_restaurant.to_dict()), 201
+
+
 
 # Add a new RestaurantPizza
 @app.route("/restaurant_pizzas", methods=["POST"])
