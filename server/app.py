@@ -87,14 +87,30 @@ def get_restaurant(id):
     return jsonify({"error": "Restaurant not found"}), 404
 
 # Delete a restaurant by ID
+# @app.route("/restaurants/<int:id>", methods=["DELETE"])
+# def delete_restaurant(id):
+#     restaurant = Restaurant.query.get(id)
+#     if restaurant:
+#         db.session.delete(restaurant)
+#         db.session.commit()
+#         return jsonify({"message": "Restaurant deleted"}), 200
+#     return jsonify({"error": "Restaurant not found"}), 404
 @app.route("/restaurants/<int:id>", methods=["DELETE"])
 def delete_restaurant(id):
     restaurant = Restaurant.query.get(id)
-    if restaurant:
-        db.session.delete(restaurant)
-        db.session.commit()
-        return jsonify({"message": "Restaurant deleted"}), 200
-    return jsonify({"error": "Restaurant not found"}), 404
+    
+    if not restaurant:
+        return jsonify({"error": "Restaurant not found"}), 404
+
+    # 🔥 Delete all associated RestaurantPizza records before deleting the restaurant
+    RestaurantPizza.query.filter_by(restaurant_id=id).delete()
+    
+    # Now safely delete the restaurant
+    db.session.delete(restaurant)
+    db.session.commit()
+
+    return jsonify({"message": "Restaurant deleted"}), 200
+
 
 # Get all pizzas
 @app.route("/pizzas", methods=["GET"])
@@ -127,29 +143,56 @@ def create_restaurant():
 
 
 # Add a new RestaurantPizza
+# @app.route("/restaurant_pizzas", methods=["POST"])
+# def create_restaurant_pizza():
+#     data = request.get_json()
+#     price = data.get("price")
+#     pizza_id = data.get("pizza_id")
+#     restaurant_id = data.get("restaurant_id")
+    
+#     if not price or not pizza_id or not restaurant_id:
+#         return jsonify({"error": "Missing required fields"}), 400
+    
+#     if not (1 <= price <= 30):
+#         return jsonify({"error": "Price must be between 1 and 30"}), 400
+    
+#     restaurant = Restaurant.query.get(restaurant_id)
+#     pizza = Pizza.query.get(pizza_id)
+    
+#     if not restaurant or not pizza:
+#         return jsonify({"error": "Invalid restaurant or pizza ID"}), 404
+    
+#     new_restaurant_pizza = RestaurantPizza(price=price, restaurant_id=restaurant_id, pizza_id=pizza_id)
+#     db.session.add(new_restaurant_pizza)
+#     db.session.commit()
+    
+#     return jsonify(pizza.to_dict()), 201
 @app.route("/restaurant_pizzas", methods=["POST"])
 def create_restaurant_pizza():
     data = request.get_json()
     price = data.get("price")
     pizza_id = data.get("pizza_id")
     restaurant_id = data.get("restaurant_id")
-    
-    if not price or not pizza_id or not restaurant_id:
-        return jsonify({"error": "Missing required fields"}), 400
-    
+
+    if price is None or pizza_id is None or restaurant_id is None:
+        return jsonify({"errors": ["Missing required fields"]}), 400  # ✅ Fix response format
+
     if not (1 <= price <= 30):
-        return jsonify({"error": "Price must be between 1 and 30"}), 400
-    
+        return jsonify({"errors": ["Price must be between 1 and 30"]}), 400  # ✅ Fix response format
+
     restaurant = Restaurant.query.get(restaurant_id)
     pizza = Pizza.query.get(pizza_id)
-    
+
     if not restaurant or not pizza:
-        return jsonify({"error": "Invalid restaurant or pizza ID"}), 404
-    
-    new_restaurant_pizza = RestaurantPizza(price=price, restaurant_id=restaurant_id, pizza_id=pizza_id)
+        return jsonify({"errors": ["Invalid restaurant or pizza ID"]}), 404  # ✅ Fix response format
+
+    new_restaurant_pizza = RestaurantPizza(
+        price=price, restaurant_id=restaurant_id, pizza_id=pizza_id
+    )
     db.session.add(new_restaurant_pizza)
     db.session.commit()
-    
-    return jsonify(pizza.to_dict()), 201
+
+    return jsonify(new_restaurant_pizza.to_dict()), 201  # ✅ Return correct object
+
 if __name__ == "__main__":
     app.run(port=5555, debug=True)
